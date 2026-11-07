@@ -99,13 +99,7 @@ cp .env.example .env
 
 Llena los cuatro valores. Son públicos (van dentro de la app), así que nunca pongas ahí la llave de Anthropic ni la *service role key* de Supabase.
 
-Para las compilaciones en la nube, súbelos también a EAS:
-
-```bash
-npx eas-cli@latest env:create --environment development --name EXPO_PUBLIC_SUPABASE_URL --value https://TU-PROYECTO.supabase.co --visibility plaintext
-```
-
-Repite para cada variable y para los entornos `preview` y `production`.
+Para las compilaciones en la nube, los mismos valores públicos ya están en `eas.json` (sección `env` de cada perfil). Si cambias de proyecto de Supabase o de clientes de Google, actualízalos ahí también.
 
 ## 5. Probar en tu celular
 
