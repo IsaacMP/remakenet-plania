@@ -1,14 +1,15 @@
-/**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
- */
+import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors, SubjectColors, type SubjectColor, type ThemeColors } from '@/constants/theme';
 
-export function useTheme() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'dark' ? 'dark' : 'light';
+export function useTheme(): ThemeColors & { scheme: 'light' | 'dark' } {
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  return { ...Colors[scheme], scheme };
+}
 
-  return Colors[theme];
+/** Color fuerte y suave de una materia según el tema actual. */
+export function useSubjectColor(color: string): { strong: string; soft: string } {
+  const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
+  const pair = (SubjectColors[color as SubjectColor] ?? SubjectColors.teal)[scheme];
+  return { strong: pair[0], soft: pair[1] };
 }

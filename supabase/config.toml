@@ -1,0 +1,12 @@
+# Configuración mínima de Supabase CLI para este proyecto.
+project_id = "plania"
+
+[functions.process-document]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true
+
+# RevenueCat no manda un token de Supabase; la función valida su propio secreto
+[functions.revenuecat-webhook]
+verify_jwt = false

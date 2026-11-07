@@ -1,56 +1,59 @@
-# Welcome to your Expo app 👋
+# Plania
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Sube tus apuntes y sal con un examen.** App de estudio de RemakeNet para estudiantes de prepa y universidad (15 a 25 años). Se lanza en México y estará disponible en toda América, en español e inglés.
 
-## Get started
+El alumno organiza sus materias, sube un PDF, Word o PowerPoint y Plania le prepara:
 
-1. Install dependencies
+- **Resumen** por temas, con la página de donde sale cada punto
+- **Tarjetas de memoria** con repaso espaciado
+- **Examen de práctica** con explicación y fuente de cada respuesta, y la opción de generar otro distinto
+- **Relacionar**: actividad para unir conceptos con su definición
 
-   ```bash
-   npm install
-   ```
+Los exámenes y tarjetas se comparten con un código de 6 letras ("Tengo un código").
 
-2. Start the app
+Las funciones Pro que todavía no existen muestran "Esta función está en proceso de creación" y piden el correo a cambio de un cupón de 65%. El organizador (notas, ideas, proyectos, eventos) queda en segundo plano por ahora, con su propia lista de espera.
 
-   ```bash
-   npx expo start
-   ```
+## Estructura
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+  app/                 Pantallas (Expo Router: cada archivo es una ruta)
+    (tabs)/            Estudiar · Organizar · Pro · Perfil
+    subject/           Materia y formulario de materia
+    document/          Documento y sus herramientas
+    study/             Resumen, tarjetas, examen, relacionar
+    share/ code.tsx    Compartir y "Tengo un código"
+    waitlist/          Lista de espera con cupón
+  components/          Logo, íconos y piezas de interfaz
+  lib/                 Supabase, inicio de sesión, datos, planes, pagos (preparado)
+  locales/             Textos en español e inglés
+supabase/
+  migrations/          Tablas, seguridad por usuario, cupones, códigos para compartir
+  functions/           Servidor: procesar documentos con IA, borrar cuenta, webhook de pagos
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+## Tecnología
 
-### Other setup steps
+- **App:** Expo SDK 58 + React Native, Expo Router, TanStack Query, i18next
+- **Cuentas y datos:** Supabase (Postgres con seguridad por fila, Storage, Edge Functions)
+- **Inicio de sesión:** Google, nativo en Android e iOS
+- **IA:** API de Claude (Anthropic) desde el servidor; la llave nunca llega al celular
+- **Pagos (preparado):** RevenueCat para App Store y Google Play
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Empezar
 
-## Learn more
+Lee **[SETUP.md](SETUP.md)**: explica cómo conectar Supabase, Google y Anthropic, y cómo probar la app en tu celular.
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+npm run typecheck
+npm run lint
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Pantallas
 
-## Join the community
+Capturas de la versión web con datos de ejemplo. En el celular, las pestañas van abajo.
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+![Inicio de sesión, primer minuto, inicio y materia](docs/screenshots/pantallas-1.png)
+![Documento, resumen, examen y tarjetas](docs/screenshots/pantallas-2.png)
+![Plania Pro, lista de espera con cupón, compartir e inicio en modo oscuro](docs/screenshots/pantallas-3.png)
