@@ -1,7 +1,7 @@
 -- Plania · esquema inicial
 -- Núcleo: estudio (materias, documentos, sets de estudio). Organizador queda para después.
 
-create extension if not exists pgcrypto;
+create extension if not exists pgcrypto with schema extensions;
 
 -- ¿La operación viene del servidor (service role) o de una función interna de confianza?
 create function public.is_privileged() returns boolean
@@ -239,7 +239,7 @@ begin
   select coupon_code into v_code from profiles where id = auth.uid();
   if v_code is null then
     loop
-      v_code := 'PLANIA65-' || upper(substr(encode(gen_random_bytes(4), 'hex'), 1, 6));
+      v_code := 'PLANIA65-' || upper(substr(encode(extensions.gen_random_bytes(4), 'hex'), 1, 6));
       begin
         perform set_config('plania.bypass', 'on', true);
         update profiles set coupon_code = v_code where id = auth.uid();
@@ -307,7 +307,7 @@ begin
   loop
     v_code := '';
     for i in 1..6 loop
-      v_code := v_code || substr(v_alphabet, 1 + (get_byte(gen_random_bytes(1), 0) % length(v_alphabet)), 1);
+      v_code := v_code || substr(v_alphabet, 1 + (get_byte(extensions.gen_random_bytes(1), 0) % length(v_alphabet)), 1);
     end loop;
     begin
       insert into shares (code, study_set_id, owner_id) values (v_code, p_study_set_id, auth.uid());
