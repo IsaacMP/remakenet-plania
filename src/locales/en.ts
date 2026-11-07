@@ -126,6 +126,7 @@ const en: Translations = {
       ai_error: 'Something failed while preparing your material. Please try again.',
       network: 'You’re offline. Check your internet and try again.',
       already_processing: 'We’re already preparing it.',
+      ai_not_configured: 'AI isn’t configured on the server yet. Save the API key in Supabase (see SETUP.md).',
     },
   },
   summary: { overview: 'What it’s about', keyTerms: 'Key terms' },

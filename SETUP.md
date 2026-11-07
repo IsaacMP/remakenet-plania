@@ -3,13 +3,16 @@
 Guía paso a paso para conectar la app con sus servicios y probarla en tu celular.
 Tiempo aproximado: 1 a 2 horas la primera vez.
 
+> **Estado actual:** el proyecto de Supabase de RemakeNet ya tiene las tablas y las funciones publicadas, y el `.env` tiene su URL y su llave pública. Lo que falta es la llave de la IA (paso 3) y Google (paso 2).
+
 Necesitas cuentas en:
 
 | Servicio | Para qué | Costo para empezar |
 | --- | --- | --- |
 | [Supabase](https://supabase.com) | Base de datos, cuentas de usuario, archivos y servidor | Gratis |
 | [Google Cloud](https://console.cloud.google.com) | Iniciar sesión con Google | Gratis |
-| [Anthropic](https://console.anthropic.com) | La IA que genera resúmenes, tarjetas y exámenes | Pago por uso (ver abajo) |
+| [Google AI Studio](https://aistudio.google.com) | IA para desarrollo (Gemini) | Gratis con límite diario |
+| [Anthropic](https://console.anthropic.com) | IA para el lanzamiento (Claude) | Pago por uso (ver abajo) |
 | [Expo / EAS](https://expo.dev) | Compilar la app para Android e iOS | Gratis (con límite de compilaciones al mes) |
 | Google Play Console | Publicar en Android | USD 25, una sola vez |
 | Apple Developer Program | Publicar en iOS | USD 99 al año |
@@ -33,11 +36,7 @@ Necesitas cuentas en:
    supabase db push
    ```
 
-4. Guarda la llave de Anthropic como secreto del servidor (nunca va en la app):
-
-   ```bash
-   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   ```
+4. Guarda la llave de la IA como secreto del servidor (nunca va en la app). Ver el paso 3.
 
 5. Publica las funciones del servidor:
 
@@ -64,13 +63,33 @@ En Google Cloud Console → **APIs & Services**:
    - Pega el *Client secret* del cliente Web.
    - Activa **Skip nonce check** (lo necesita el inicio de sesión nativo en iOS).
 
-## 3. Anthropic (la IA)
+## 3. La IA: Gemini para desarrollo, Claude para lanzar
 
-1. Crea una llave en console.anthropic.com → API Keys y guárdala con `supabase secrets set` (paso 1.4).
-2. Pon un límite de gasto mensual en *Billing → Limits* para evitar sorpresas.
-3. Costo de referencia con `claude-opus-5-5` (USD 4 por millón de tokens de entrada, USD 20 por millón de salida): un PDF de 20 páginas usa unos 40 000 a 60 000 tokens de entrada y 10 000 a 15 000 de salida (incluyendo el razonamiento del modelo), o sea **USD 0.40 a 0.55 por documento**. Un alumno gratis que use sus 10 generaciones cuesta hasta unos USD 5 al mes. El tope de Pro (100 al mes) existe para que un usuario extremo no cueste más de lo que paga; la mayoría usará muchas menos. Si el costo pesa, prueba `claude-sonnet-5-5` (la mitad de precio) cambiando `MODEL` en `supabase/functions/_shared/study.ts` y compara la calidad de los exámenes antes de decidir.
+El servidor puede usar dos proveedores. Se elige con el secreto `AI_PROVIDER` en Supabase → **Edge Functions → Secrets**. El código de los dos está en `supabase/functions/_shared/ai.ts`.
 
-El servidor usa el modelo `claude-opus-5-5` con respaldo automático: si el modelo rechaza un documento por sus políticas, Anthropic reintenta con su modelo de respaldo recomendado en la misma llamada (`fallbacks: "default"`). Si prefieres desactivarlo, quita las líneas `betas` y `fallbacks` en `supabase/functions/process-document/index.ts`.
+| `AI_PROVIDER` | Proveedor | Llave que necesita | Costo |
+| --- | --- | --- | --- |
+| `gemini` (o vacío) | Google Gemini | `GEMINI_API_KEY` | Nivel gratis con límite diario |
+| `claude` | Claude de Anthropic | `ANTHROPIC_API_KEY` | De pago por uso |
+
+### Ahora: Gemini gratis
+
+1. Entra a [aistudio.google.com](https://aistudio.google.com) con tu cuenta de Google → **Get API key** → **Create API key**.
+2. En Supabase → **Edge Functions → Secrets** agrega `GEMINI_API_KEY` con esa llave.
+3. Listo: si `AI_PROVIDER` no existe, se usa Gemini.
+
+El modelo por defecto es `gemini-flash-latest` (el Flash vigente de Google). Para fijar otro, agrega el secreto `GEMINI_MODEL`.
+
+> **Importante:** en el nivel gratis, Google puede usar el contenido que recibe para mejorar sus productos. Úsalo para probar con tus propios documentos. Antes de abrir la app a alumnos reales, cambia a Claude o al nivel de pago de Gemini, y menciónalo en tu aviso de privacidad. Los límites gratis los ves en AI Studio; si se acaban, la app muestra "Hay mucha demanda ahora mismo".
+
+### Después: Claude
+
+1. En console.anthropic.com compra créditos (**Billing**), pon un tope mensual (**Billing → Limits**) y crea una llave (**API Keys**). El plan Pro de claude.ai no incluye créditos de API.
+2. En Supabase → **Edge Functions → Secrets** agrega `ANTHROPIC_API_KEY` y cambia `AI_PROVIDER` a `claude`. No hay que volver a publicar nada.
+
+Costo de referencia con `claude-opus-5-5` (USD 4 por millón de tokens de entrada, USD 20 por millón de salida): un PDF de 20 páginas usa unos 40 000 a 60 000 tokens de entrada y 10 000 a 15 000 de salida, o sea **USD 0.40 a 0.55 por documento**. Con `CLAUDE_MODEL=claude-haiku-5-5` baja a alrededor de 1 centavo; con `claude-sonnet-5-5`, a la mitad. Compara la calidad de los exámenes antes de decidir. El tope de Pro (100 generaciones al mes) existe para que un usuario extremo no cueste más de lo que paga.
+
+Con Claude, el servidor activa el respaldo automático: si el modelo rechaza un documento por sus políticas, Anthropic reintenta con su modelo de respaldo recomendado en la misma llamada (`fallbacks: "default"`).
 
 ## 4. Archivo `.env`
 

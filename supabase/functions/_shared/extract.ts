@@ -1,6 +1,6 @@
 // Extrae texto de Word (.docx) y PowerPoint (.pptx) con marcas de página/diapositiva,
 // para que la IA pueda citar de dónde sale cada pregunta.
-// Los PDF no pasan por aquí: se envían tal cual a Claude, que los lee con sus páginas.
+// Los PDF no pasan por aquí: se envían completos a la IA, que los lee con sus páginas.
 import { strFromU8, unzipSync } from "./deps.ts";
 
 export const MIME = {

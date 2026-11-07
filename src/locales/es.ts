@@ -124,6 +124,7 @@ const es = {
       ai_error: 'Algo falló al preparar tu material. Inténtalo de nuevo.',
       network: 'Sin conexión. Revisa tu internet e inténtalo de nuevo.',
       already_processing: 'Ya lo estamos preparando.',
+      ai_not_configured: 'La IA todavía no está configurada en el servidor. Falta guardar la llave en Supabase (ver SETUP.md).',
     },
   },
   summary: { overview: 'De qué trata', keyTerms: 'Conceptos clave' },

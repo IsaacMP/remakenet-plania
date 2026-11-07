@@ -37,12 +37,12 @@ supabase/
 - **App:** Expo SDK 58 + React Native, Expo Router, TanStack Query, i18next
 - **Cuentas y datos:** Supabase (Postgres con seguridad por fila, Storage, Edge Functions)
 - **Inicio de sesión:** Google, nativo en Android e iOS
-- **IA:** API de Claude (Anthropic) desde el servidor; la llave nunca llega al celular
+- **IA:** Gemini (Google) para desarrollo y Claude (Anthropic) para el lanzamiento, intercambiables con `AI_PROVIDER`; las llaves viven solo en el servidor
 - **Pagos (preparado):** RevenueCat para App Store y Google Play
 
 ## Empezar
 
-Lee **[SETUP.md](SETUP.md)**: explica cómo conectar Supabase, Google y Anthropic, y cómo probar la app en tu celular.
+Lee **[SETUP.md](SETUP.md)**: explica cómo conectar Supabase, Google y la IA, y cómo probar la app en tu celular.
 
 ```bash
 npm install

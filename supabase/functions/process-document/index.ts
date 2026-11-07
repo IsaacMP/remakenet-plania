@@ -2,14 +2,14 @@
 // Lee el documento del alumno y genera resumen, tarjetas y examen (mode "all"),
 // o solo un examen nuevo (mode "quiz"). Responde de inmediato (202) y trabaja en segundo plano;
 // la app observa el estado del documento.
-import { Anthropic, betaZodOutputFormat, type SupabaseClient } from "../_shared/deps.ts";
+import type { SupabaseClient } from "../_shared/deps.ts";
+import { currentProvider, generate, StudyError, type StudyDoc } from "../_shared/ai.ts";
 import { adminClient, corsHeaders, json, requireUser } from "../_shared/http.ts";
 import { countPdfPages, extractDocx, extractPptx, MIME } from "../_shared/extract.ts";
 import { type Plan, PLAN_LIMITS } from "../_shared/plans.ts";
 import {
   cleanQuiz,
   type Locale,
-  MODEL,
   packInstructions,
   QuizOnlySchema,
   quizInstructions,
@@ -20,12 +20,6 @@ import {
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
 const STALE_MS = 6 * 60 * 1000;
-
-class StudyError extends Error {
-  constructor(public code: string) {
-    super(code);
-  }
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -118,16 +112,12 @@ async function run(
   if (error || !file) throw new StudyError("file_missing");
   const bytes = new Uint8Array(await file.arrayBuffer());
 
-  // Preparar el documento para Claude
-  let docBlock: Anthropic.Beta.BetaContentBlockParam;
+  // Preparar el documento para la IA: los PDF van completos, Word y PowerPoint como texto
+  let studyDoc: StudyDoc;
   if (doc.mime_type === MIME.pdf) {
     const pages = countPdfPages(bytes);
     if (pages > limits.maxPages) throw new StudyError("too_many_pages");
-    docBlock = {
-      type: "document",
-      title: doc.title,
-      source: { type: "base64", media_type: "application/pdf", data: toBase64(bytes) },
-    };
+    studyDoc = { kind: "pdf", title: doc.title, base64: toBase64(bytes) };
   } else {
     let extracted;
     try {
@@ -140,11 +130,7 @@ async function run(
     }
     if (extracted.pages > limits.maxPages) throw new StudyError("too_many_pages");
     if (extracted.text.length > limits.maxChars) throw new StudyError("too_long");
-    docBlock = {
-      type: "document",
-      title: doc.title,
-      source: { type: "text", media_type: "text/plain", data: extracted.text },
-    };
+    studyDoc = { kind: "text", title: doc.title, text: extracted.text };
   }
 
   let previous: string[] = [];
@@ -159,39 +145,10 @@ async function run(
     ).slice(-60);
   }
 
-  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") });
-  const schema = mode === "all" ? StudyPackSchema : QuizOnlySchema;
-
-  const stream = anthropic.beta.messages.stream({
-    model: MODEL,
-    max_tokens: 32000,
-    // Si el modelo declina por política, el servidor reintenta con el modelo de respaldo recomendado
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
-    system: systemPrompt(locale),
-    messages: [{
-      role: "user",
-      content: [
-        docBlock,
-        { type: "text", text: mode === "all" ? packInstructions() : quizInstructions(previous) },
-      ],
-    }],
-  });
-
-  let message;
-  try {
-    message = await stream.finalMessage();
-  } catch (err) {
-    if (err instanceof Anthropic.BadRequestError) throw new StudyError("unreadable");
-    if (err instanceof Anthropic.RateLimitError) throw new StudyError("busy");
-    throw err;
-  }
-
-  if (message.stop_reason === "refusal") throw new StudyError("refusal");
-  if (message.stop_reason === "max_tokens") throw new StudyError("too_long");
-  const parsed = message.parsed_output;
-  if (!parsed) throw new StudyError("ai_error");
+  const instructions = mode === "all" ? packInstructions() : quizInstructions(previous);
+  const parsed = mode === "all"
+    ? await generate({ system: systemPrompt(locale), doc: studyDoc, instructions, schema: StudyPackSchema })
+    : await generate({ system: systemPrompt(locale), doc: studyDoc, instructions, schema: QuizOnlySchema });
 
   const quiz = cleanQuiz(parsed.quiz);
   if (quiz.length < 3) throw new StudyError("ai_error");
@@ -226,7 +183,7 @@ async function run(
 
   await admin.from("ai_usage").insert({ user_id: userId, kind: mode === "all" ? "pack" : "quiz", document_id: doc.id });
   await admin.from("documents").update({ status: "ready", error_code: null }).eq("id", doc.id);
-  console.log("process-document ok", doc.id, mode, `${Date.now() - started}ms`);
+  console.log("process-document ok", doc.id, mode, currentProvider(), `${Date.now() - started}ms`);
 }
 
 function toBase64(bytes: Uint8Array): string {

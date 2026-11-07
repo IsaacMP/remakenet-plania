@@ -1,8 +1,6 @@
 // Qué le pedimos a la IA y en qué forma debe responder.
 import { z } from "./deps.ts";
 
-export const MODEL = "claude-opus-5-5";
-
 const Source = z.string().describe(
   'Where this comes from in the document, short. E.g. "p. 7", "pp. 3-4", "slide 12". Use the language of the output.',
 );
