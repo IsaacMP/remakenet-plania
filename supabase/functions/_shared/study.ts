@@ -29,16 +29,16 @@ export const QuestionSchema = z.object({
   source: Source,
 });
 
-export const StudyPackSchema = z.object({
+// El material se genera en dos partes en paralelo (más rápido): resumen + tarjetas, y examen.
+export const PackSchema = z.object({
   title: z.string().describe("Short title for this material, max 6 words."),
   summary: SummarySchema,
   flashcards: z.array(FlashcardSchema),
-  quiz: z.array(QuestionSchema),
 });
 
 export const QuizOnlySchema = z.object({ quiz: z.array(QuestionSchema) });
 
-export type StudyPack = z.infer<typeof StudyPackSchema>;
+export type StudyPack = z.infer<typeof PackSchema>;
 export type Question = z.infer<typeof QuestionSchema>;
 
 const LANG = { es: "Spanish (Latin American, neutral)", en: "English" } as const;
@@ -54,13 +54,12 @@ Style: clear and direct, like a good classmate explaining before an exam. No fil
 }
 
 export function packInstructions(): string {
-  return `Create a complete study pack from the attached document:
+  return `Create study material from the attached document:
 
 1. summary: an overview plus one section per main topic, in the order they appear. Points should be things a student needs to remember for an exam. Then the key terms with short definitions.
 2. flashcards: 15-30 cards covering the key concepts, definitions, dates, formulas and cause-effect relations. One idea per card.
-3. quiz: 12-15 multiple-choice questions with exactly 4 options. Mix recall and understanding (applying a concept, comparing, choosing the correct example). Wrong options must be plausible to someone who did not study, and must not be "all of the above" / "none of the above". Spread the correct answer position across 0-3.
 
-Every section, card and question needs a source pointing to the page or slide it came from. Page and slide markers look like "[Página N]" or "[Diapositiva N]" in text documents; PDF pages are numbered from 1.`;
+Every section and card needs a source pointing to the page or slide it came from. Page and slide markers look like "[Página N]" or "[Diapositiva N]" in text documents; PDF pages are numbered from 1.`;
 }
 
 export function quizInstructions(previous: string[]): string {

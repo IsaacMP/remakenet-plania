@@ -33,8 +33,8 @@ export function currentProvider(): Provider {
 }
 
 // PDF más grandes que esto se suben primero al servicio de archivos del proveedor,
-// en lugar de mandarse dentro de la petición (evita peticiones enormes y falta de memoria).
-const INLINE_PDF_MAX_BYTES = 15 * 1024 * 1024;
+// en lugar de mandarse dentro de la petición (el servidor tiene poca memoria).
+const INLINE_PDF_MAX_BYTES = 4 * 1024 * 1024;
 
 export function toBase64(bytes: Uint8Array): string {
   let binary = "";
@@ -45,16 +45,29 @@ export function toBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-/** Genera material con el proveedor configurado y lo devuelve ya validado con el esquema. */
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Genera con un documento ya preparado. Se puede llamar varias veces en paralelo. */
+export type Generator = <S extends z.ZodType>(input: { system: string; instructions: string; schema: S }) => Promise<z.infer<S>>;
+
+/**
+ * Prepara el documento una sola vez (lo sube si es grande), ejecuta `fn` con un generador
+ * y al final borra lo que se haya subido.
+ */
+export function withDocument<T>(doc: StudyDoc, fn: (generate: Generator) => Promise<T>): Promise<T> {
+  return currentProvider() === "claude" ? withClaude(doc, fn) : withGemini(doc, fn);
+}
+
+/** Atajo para una sola generación. */
 export function generate<S extends z.ZodType>(input: GenerateInput<S>): Promise<z.infer<S>> {
-  return currentProvider() === "claude" ? generateWithClaude(input) : generateWithGemini(input);
+  return withDocument(input.doc, (gen) => gen({ system: input.system, instructions: input.instructions, schema: input.schema }));
 }
 
 // ── Claude (Anthropic) ──────────────────────────
 
 export const CLAUDE_MODEL = "claude-opus-5-5";
 
-async function generateWithClaude<S extends z.ZodType>({ system, doc, instructions, schema }: GenerateInput<S>) {
+async function withClaude<T>(doc: StudyDoc, fn: (generate: Generator) => Promise<T>): Promise<T> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new StudyError("ai_not_configured");
   const anthropic = new Anthropic({ apiKey });
@@ -73,37 +86,44 @@ async function generateWithClaude<S extends z.ZodType>({ system, doc, instructio
     docBlock = { type: "document", title: doc.title, source: { type: "file", file_id: uploaded.id } };
   }
 
-  const stream = anthropic.beta.messages.stream({
-    model: Deno.env.get("CLAUDE_MODEL") || CLAUDE_MODEL,
-    max_tokens: 32000,
-    // Si el modelo declina por política, el servidor reintenta con el modelo de respaldo recomendado
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
-    system,
-    messages: [{ role: "user", content: [docBlock, { type: "text", text: instructions }] }],
-  });
+  const gen: Generator = async ({ system, instructions, schema }) => {
+    const stream = anthropic.beta.messages.stream({
+      model: Deno.env.get("CLAUDE_MODEL") || CLAUDE_MODEL,
+      max_tokens: 32000,
+      // Si el modelo declina por política, el servidor reintenta con el modelo de respaldo recomendado
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "medium", format: betaZodOutputFormat(schema) },
+      system,
+      messages: [{ role: "user", content: [docBlock, { type: "text", text: instructions }] }],
+    });
+    let message;
+    try {
+      message = await stream.finalMessage();
+    } catch (err) {
+      if (err instanceof Anthropic.BadRequestError) throw new StudyError("unreadable");
+      if (err instanceof Anthropic.RateLimitError) throw new StudyError("busy");
+      throw err;
+    }
+    if (message.stop_reason === "refusal") throw new StudyError("refusal");
+    if (message.stop_reason === "max_tokens") throw new StudyError("too_long");
+    if (!message.parsed_output) throw new StudyError("ai_error");
+    return message.parsed_output as z.infer<typeof schema>;
+  };
 
-  let message;
   try {
-    message = await stream.finalMessage();
-  } catch (err) {
-    if (err instanceof Anthropic.BadRequestError) throw new StudyError("unreadable");
-    if (err instanceof Anthropic.RateLimitError) throw new StudyError("busy");
-    throw err;
+    return await fn(gen);
   } finally {
     if (uploadedFileId) anthropic.files.delete(uploadedFileId).catch(() => {});
   }
-  if (message.stop_reason === "refusal") throw new StudyError("refusal");
-  if (message.stop_reason === "max_tokens") throw new StudyError("too_long");
-  if (!message.parsed_output) throw new StudyError("ai_error");
-  return message.parsed_output as z.infer<S>;
 }
 
 // ── Gemini (Google) ─────────────────────────────
 
-// Alias que Google mantiene apuntando a su Flash vigente; se puede fijar otro con GEMINI_MODEL
+// Alias que Google mantiene apuntando a su Flash vigente; se puede fijar otro con GEMINI_MODEL.
+// Si el principal está saturado, se intenta con el respaldo (más ligero).
 export const GEMINI_MODEL = "gemini-flash-latest";
+export const GEMINI_FALLBACK_MODEL = "gemini-flash-lite-latest";
 
 type GeminiResponse = {
   candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
@@ -111,10 +131,11 @@ type GeminiResponse = {
   error?: { code?: number; message?: string; status?: string };
 };
 
-async function generateWithGemini<S extends z.ZodType>({ system, doc, instructions, schema }: GenerateInput<S>) {
+async function withGemini<T>(doc: StudyDoc, fn: (generate: Generator) => Promise<T>): Promise<T> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new StudyError("ai_not_configured");
   const model = Deno.env.get("GEMINI_MODEL") || GEMINI_MODEL;
+  const fallback = Deno.env.get("GEMINI_FALLBACK_MODEL") || GEMINI_FALLBACK_MODEL;
 
   let uploadedName: string | null = null;
   let docPart: Record<string, unknown>;
@@ -127,9 +148,27 @@ async function generateWithGemini<S extends z.ZodType>({ system, doc, instructio
     uploadedName = file.name;
     docPart = { fileData: { mimeType: "application/pdf", fileUri: file.uri } };
   }
+  // Ya no necesitamos los bytes en memoria
+  if (doc.kind === "pdf") (doc as { bytes?: Uint8Array }).bytes = new Uint8Array(0);
+
+  const gen: Generator = async ({ system, instructions, schema }) => {
+    // Reintentos ante saturación: 2 con el modelo principal y luego el de respaldo
+    const attempts = [model, model, fallback];
+    let last: unknown;
+    for (let i = 0; i < attempts.length; i++) {
+      try {
+        return await geminiGenerate(apiKey, attempts[i], system, docPart, instructions, schema);
+      } catch (err) {
+        last = err;
+        if (!(err instanceof StudyError) || err.code !== "busy") throw err;
+        if (i < attempts.length - 1) await sleep(i === 0 ? 2000 : 4000);
+      }
+    }
+    throw last;
+  };
 
   try {
-    return await geminiGenerate(apiKey, model, system, docPart, instructions, schema);
+    return await fn(gen);
   } finally {
     if (uploadedName) {
       fetch(`https://generativelanguage.googleapis.com/v1beta/${uploadedName}`, {
@@ -190,24 +229,33 @@ async function geminiGenerate<S extends z.ZodType>(
   // Gemini acepta JSON Schema; quitamos la clave $schema que agrega zod
   const { $schema: _ignored, ...jsonSchema } = z.toJSONSchema(schema) as Record<string, unknown>;
 
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts: [docPart, { text: instructions }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseJsonSchema: jsonSchema,
-        maxOutputTokens: 32000,
-      },
-    }),
-  });
+  const request = (withThinking: boolean) =>
+    fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [docPart, { text: instructions }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseJsonSchema: jsonSchema,
+          maxOutputTokens: 32000,
+          // Pensar poco: el material sale casi igual de bien y mucho más rápido
+          ...(withThinking ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
+        },
+      }),
+    });
 
-  const body = (await res.json().catch(() => ({}))) as GeminiResponse;
+  let res = await request(true);
+  let body = (await res.json().catch(() => ({}))) as GeminiResponse;
+  // Modelos que no aceptan el nivel de razonamiento: repetir sin él
+  if (res.status === 400 && /thinking/i.test(body.error?.message ?? "")) {
+    res = await request(false);
+    body = (await res.json().catch(() => ({}))) as GeminiResponse;
+  }
   if (!res.ok) {
-    console.error("gemini error", res.status, body.error?.status, body.error?.message);
-    if (res.status === 429) throw new StudyError("busy");
+    console.error("gemini error", model, res.status, body.error?.status, body.error?.message);
+    if (res.status === 429 || res.status === 503 || res.status === 500) throw new StudyError("busy");
     if (res.status === 400 || res.status === 413) throw new StudyError("unreadable");
     throw new StudyError("ai_error");
   }

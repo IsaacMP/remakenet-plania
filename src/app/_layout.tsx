@@ -1,4 +1,5 @@
 import '@/lib/i18n';
+import '@/lib/appearance';
 
 import { BricolageGrotesque_700Bold, BricolageGrotesque_800ExtraBold } from '@expo-google-fonts/bricolage-grotesque';
 import { Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold } from '@expo-google-fonts/figtree';
@@ -80,6 +81,8 @@ function Navigator() {
           headerBackButtonDisplayMode: 'minimal',
           contentStyle: { backgroundColor: theme.background },
         }}>
+        <Stack.Screen name="legal/[doc]" options={{ title: '' }} />
+
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />
         </Stack.Protected>

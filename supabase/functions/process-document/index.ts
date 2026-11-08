@@ -3,7 +3,7 @@
 // o solo un examen nuevo (mode "quiz"). Responde de inmediato (202) y trabaja en segundo plano;
 // la app observa el estado del documento.
 import type { SupabaseClient } from "../_shared/deps.ts";
-import { currentProvider, generate, StudyError, type StudyDoc } from "../_shared/ai.ts";
+import { currentProvider, StudyError, type StudyDoc, withDocument } from "../_shared/ai.ts";
 import { adminClient, corsHeaders, json, requireUser } from "../_shared/http.ts";
 import { countPdfPages, extractDocx, extractPptx, MIME } from "../_shared/extract.ts";
 import { type Plan, PLAN_LIMITS } from "../_shared/plans.ts";
@@ -11,15 +11,16 @@ import {
   cleanQuiz,
   type Locale,
   packInstructions,
+  PackSchema,
   QuizOnlySchema,
   quizInstructions,
-  StudyPackSchema,
   systemPrompt,
 } from "../_shared/study.ts";
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void };
 
-const STALE_MS = 6 * 60 * 1000;
+// El servidor corta a los 150 s; pasado esto, el documento se puede volver a intentar
+const STALE_MS = 3 * 60 * 1000;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -145,18 +146,28 @@ async function run(
     ).slice(-60);
   }
 
-  const instructions = mode === "all" ? packInstructions() : quizInstructions(previous);
-  const parsed = mode === "all"
-    ? await generate({ system: systemPrompt(locale), doc: studyDoc, instructions, schema: StudyPackSchema })
-    : await generate({ system: systemPrompt(locale), doc: studyDoc, instructions, schema: QuizOnlySchema });
+  const system = systemPrompt(locale);
+  // Resumen + tarjetas y examen se piden al mismo tiempo: tarda la mitad
+  const [pack, quizPart] = await withDocument(studyDoc, (gen) =>
+    Promise.all([
+      mode === "all" ? gen({ system, instructions: packInstructions(), schema: PackSchema }) : Promise.resolve(null),
+      gen({ system, instructions: quizInstructions(previous), schema: QuizOnlySchema }),
+    ])
+  );
 
-  const quiz = cleanQuiz(parsed.quiz);
+  // Si el alumno borró el documento mientras se preparaba, no hay nada que guardar
+  const { data: still } = await admin.from("documents").select("id").eq("id", doc.id).maybeSingle();
+  if (!still) {
+    console.log("process-document: documento borrado durante el proceso", doc.id);
+    return;
+  }
+
+  const quiz = cleanQuiz(quizPart.quiz);
   if (quiz.length < 3) throw new StudyError("ai_error");
 
   const quizTitle = locale === "en" ? "Practice exam" : "Examen de práctica";
 
-  if (mode === "all") {
-    const pack = parsed as typeof parsed & { title: string; summary: unknown; flashcards: unknown[] };
+  if (mode === "all" && pack) {
     // Regenerar todo reemplaza el material anterior del documento
     await admin.from("study_sets").delete().eq("document_id", doc.id).eq("origin", "generated");
     const rows = [

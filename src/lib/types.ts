@@ -22,6 +22,7 @@ export type Subject = {
   icon: string;
   position: number;
   is_shared_inbox: boolean;
+  name_i18n: Partial<Record<'es' | 'en', string>>;
   created_at: string;
 };
 
@@ -122,4 +123,6 @@ export type Item = {
   updated_at: string;
 };
 
-export type ItemWithSubject = Item & { subjects: { name: string; color: string; icon: string } | null };
+export type ItemWithSubject = Item & {
+  subjects: { name: string; name_i18n: Partial<Record<'es' | 'en', string>>; color: string; icon: string } | null;
+};

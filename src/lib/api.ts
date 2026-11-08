@@ -3,6 +3,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js';
 import { File } from 'expo-file-system';
 
 import { currentLocale } from '@/lib/i18n';
+import { namesFor } from '@/lib/subject-name';
 import { supabase } from '@/lib/supabase';
 import type {
   CardProgress,
@@ -99,6 +100,7 @@ export async function createSubjects(names: string[], iconFor: (name: string) =>
   const rows = names.map((name, i) => ({
     user_id: userId,
     name: name.trim().slice(0, 60),
+    name_i18n: namesFor(name.slice(0, 60), currentLocale()),
     color: AUTO_COLORS[i % AUTO_COLORS.length],
     icon: iconFor(name),
     position: i,
@@ -110,7 +112,13 @@ export async function createSubjects(names: string[], iconFor: (name: string) =>
 export async function createSubject(input: { name: string; color: string; icon: string }): Promise<Subject> {
   const { data, error } = await supabase
     .from('subjects')
-    .insert({ ...input, name: input.name.trim(), user_id: await uid(), position: Date.now() % 100000 })
+    .insert({
+      ...input,
+      name: input.name.trim(),
+      name_i18n: namesFor(input.name, currentLocale()),
+      user_id: await uid(),
+      position: Date.now() % 100000,
+    })
     .select()
     .single();
   fail(error);
@@ -118,8 +126,17 @@ export async function createSubject(input: { name: string; color: string; icon: 
 }
 
 export async function updateSubject(id: string, patch: Partial<Pick<Subject, 'name' | 'color' | 'icon'>>) {
-  const { error } = await supabase.from('subjects').update(patch).eq('id', id);
+  // Al renombrar, el otro idioma se vuelve a traducir
+  const row = patch.name ? { ...patch, name: patch.name.trim(), name_i18n: namesFor(patch.name, currentLocale()) } : patch;
+  const { error } = await supabase.from('subjects').update(row).eq('id', id);
   fail(error);
+}
+
+/** Pide al servidor traducir las materias personalizadas que solo tienen un idioma. */
+export async function translateSubjects(): Promise<number> {
+  const { data, error } = await supabase.functions.invoke('translate-subjects', { method: 'POST', body: {} });
+  if (error) return 0;
+  return (data as { updated?: number })?.updated ?? 0;
 }
 
 export async function deleteSubject(id: string) {
@@ -144,6 +161,12 @@ export function mimeFromName(name: string, given?: string | null): string | null
   return found?.[0] ?? null;
 }
 
+/** El servidor corta a los 150 s: si sigue "procesando" después de 3.5 min, ya no va a terminar. */
+const STALE_PROCESSING_MS = 3.5 * 60 * 1000;
+export function isStuck(doc: Pick<StudyDocument, 'status' | 'processing_started_at'>): boolean {
+  return doc.status === 'processing' && !!doc.processing_started_at && Date.now() - new Date(doc.processing_started_at).getTime() > STALE_PROCESSING_MS;
+}
+
 export async function listDocuments(subjectId: string): Promise<StudyDocument[]> {
   const { data, error } = await supabase
     .from('documents')
@@ -160,10 +183,10 @@ export async function getDocument(id: string): Promise<StudyDocument> {
   return data as StudyDocument;
 }
 
-export async function recentDocument(): Promise<(StudyDocument & { subjects: Pick<Subject, 'name' | 'color'> }) | null> {
+export async function recentDocument(): Promise<(StudyDocument & { subjects: Pick<Subject, 'name' | 'name_i18n' | 'color'> }) | null> {
   const { data, error } = await supabase
     .from('documents')
-    .select('*, subjects(name, color)')
+    .select('*, subjects(name, name_i18n, color)')
     .eq('status', 'ready')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -321,7 +344,7 @@ export async function myWaitlist(): Promise<string[]> {
 
 // ── Organizador: notas, ideas, proyectos, eventos ──
 
-const ITEM_SELECT = '*, subjects(name, color, icon)';
+const ITEM_SELECT = '*, subjects(name, name_i18n, color, icon)';
 
 export async function listItems(kind?: ItemKind): Promise<ItemWithSubject[]> {
   let q = supabase.from('items').select(ITEM_SELECT);

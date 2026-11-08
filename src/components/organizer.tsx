@@ -13,6 +13,7 @@ import { Fonts, Radius, Space } from '@/constants/theme';
 import { useSubjectColor, useTheme } from '@/hooks/use-theme';
 import type { SubjectWithCount } from '@/lib/api';
 import { currentLocale } from '@/lib/i18n';
+import { useSubjectName } from '@/lib/subject-name';
 import { FUTURE_FEATURES, type FutureFeature } from '@/lib/plans';
 import type { ItemKind, ItemWithSubject, ProjectTask } from '@/lib/types';
 
@@ -70,6 +71,7 @@ export function ItemCard({ item, showSubject = true }: { item: ItemWithSubject; 
   const theme = useTheme();
   const tone = useKindTone(item.kind);
   const subjectColor = useSubjectColor(item.subjects?.color ?? 'teal');
+  const nameOf = useSubjectName();
 
   let detail: string | null = null;
   let detailColor = theme.textSecondary;
@@ -113,7 +115,7 @@ export function ItemCard({ item, showSubject = true }: { item: ItemWithSubject; 
             <View style={[styles.subjectTag, { backgroundColor: subjectColor.soft }]}>
               <Icon name={item.subjects.icon} size={12} color={subjectColor.strong} />
               <T variant="caption" color={subjectColor.strong} numberOfLines={1}>
-                {item.subjects.name}
+                {nameOf(item.subjects)}
               </T>
             </View>
           ) : null}
@@ -150,7 +152,8 @@ export function SubjectPicker({
 
 function SubjectOption({ subject, selected, onPress }: { subject: SubjectWithCount; selected: boolean; onPress: () => void }) {
   const c = useSubjectColor(subject.color);
-  return <SubjectChip label={subject.name} icon={subject.icon} selected={selected} onPress={onPress} color={c.strong} soft={c.soft} />;
+  const nameOf = useSubjectName();
+  return <SubjectChip label={nameOf(subject)} icon={subject.icon} selected={selected} onPress={onPress} color={c.strong} soft={c.soft} />;
 }
 
 function SubjectChip({

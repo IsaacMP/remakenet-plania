@@ -55,6 +55,8 @@ const ICONS = {
   clock: { ios: 'clock', android: 'schedule', web: 'schedule' },
   bell: { ios: 'bell.fill', android: 'notifications', web: 'notifications' },
   arrow: { ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' },
+  sun: { ios: 'sun.max.fill', android: 'light_mode', web: 'light_mode' },
+  moon: { ios: 'moon.fill', android: 'dark_mode', web: 'dark_mode' },
 } as const satisfies Record<string, SymbolName>;
 
 export type IconName = keyof typeof ICONS;

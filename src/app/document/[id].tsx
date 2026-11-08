@@ -10,7 +10,7 @@ import { LogoMark } from '@/components/logo';
 import { Button, Card, IconBubble, Row, Screen, SectionTitle, T, tap } from '@/components/ui';
 import { Fonts, Radius, Space } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { bestAttempts, deleteDocument, getDocument, listDocumentSets, processDocument } from '@/lib/api';
+import { bestAttempts, deleteDocument, getDocument, isStuck, listDocumentSets, processDocument } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { errorMessage } from '@/lib/errors';
 import { mastery } from '@/lib/srs';
@@ -27,9 +27,10 @@ export default function DocumentScreen() {
   const doc = useQuery({
     queryKey: ['document', id],
     queryFn: () => getDocument(id),
-    refetchInterval: (q) => (q.state.data && ['processing', 'uploaded'].includes(q.state.data.status) ? 2500 : false),
+    refetchInterval: (q) => (q.state.data && ['processing', 'uploaded'].includes(q.state.data.status) && !isStuck(q.state.data) ? 2500 : false),
   });
-  const status = doc.data?.status;
+  const stuck = doc.data ? isStuck(doc.data) : false;
+  const status = stuck ? 'failed' : doc.data?.status;
 
   const sets = useQuery({ queryKey: ['sets', id], queryFn: () => listDocumentSets(id), enabled: status === 'ready' || status === 'processing' });
   const quizzes = (sets.data ?? []).filter((s): s is Extract<StudySet, { kind: 'quiz' }> => s.kind === 'quiz');
@@ -120,7 +121,7 @@ export default function DocumentScreen() {
                 {t('document.status.failed')}
               </T>
             </Row>
-            <T color={theme.text}>{errorMessage(t, doc.data?.error_code ?? 'ai_error', plan)}</T>
+            <T color={theme.text}>{errorMessage(t, stuck ? 'timeout' : (doc.data?.error_code ?? 'ai_error'), plan)}</T>
             <Button label={t('common.retry')} icon="refresh" onPress={() => run('all')} loading={busy} />
           </Card>
         ) : null}

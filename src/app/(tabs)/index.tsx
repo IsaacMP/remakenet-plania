@@ -1,20 +1,25 @@
 // Inicio: saludo, racha, "sigue donde te quedaste" y tus materias.
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
-import { LogoMark } from '@/components/logo';
+import { HomeLogo } from '@/components/logo';
 import { SubjectTile } from '@/components/subject-tile';
 import { Button, Card, EmptyState, IconBubble, ProgressBar, Row, SectionTitle, T } from '@/components/ui';
 import { Fonts, Radius, Space } from '@/constants/theme';
 import { useSubjectColor, useTheme } from '@/hooks/use-theme';
-import { listSubjects, recentDocument, usageThisMonth } from '@/lib/api';
+import { listSubjects, recentDocument, translateSubjects, usageThisMonth } from '@/lib/api';
 import { firstName, useAuth } from '@/lib/auth';
 import { PLAN_LIMITS } from '@/lib/plans';
 import { addDays, today } from '@/lib/srs';
+import { needsTranslation, useSubjectName } from '@/lib/subject-name';
+
+// Evita pedir la misma traducción varias veces a la vez
+let translationRequested = false;
 
 export default function Home() {
   const { t } = useTranslation();
@@ -22,6 +27,20 @@ export default function Home() {
   const { profile, session, refreshProfile } = useAuth();
 
   const subjects = useQuery({ queryKey: ['subjects'], queryFn: listSubjects });
+
+  // Materias personalizadas con un solo idioma: pedir la traducción una vez por sesión
+  const pending = (subjects.data ?? []).filter((s) => !s.is_shared_inbox && needsTranslation(s)).length;
+  useEffect(() => {
+    if (pending === 0 || translationRequested) return;
+    translationRequested = true;
+    translateSubjects().then((n) => {
+      // Si falló, no se reintenta hasta la próxima vez que se abra la app
+      if (n > 0) {
+        translationRequested = false;
+        subjects.refetch();
+      }
+    });
+  }, [pending, subjects]);
   const recent = useQuery({ queryKey: ['recent-document'], queryFn: recentDocument });
   const usage = useQuery({ queryKey: ['usage'], queryFn: usageThisMonth });
 
@@ -52,7 +71,7 @@ export default function Home() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.tint} />}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <LogoMark size={34} />
+          <HomeLogo pro={plan === 'pro'} />
           <Button label={t('home.haveCode')} variant="secondary" icon="key" onPress={() => router.push('/code')} style={styles.codeButton} />
         </Row>
 
@@ -120,6 +139,7 @@ function ContinueCard({ doc }: { doc: NonNullable<Awaited<ReturnType<typeof rece
   const { t } = useTranslation();
   const theme = useTheme();
   const c = useSubjectColor(doc.subjects?.color ?? 'teal');
+  const nameOf = useSubjectName();
   return (
     <Card onPress={() => router.push(`/document/${doc.id}`)} style={{ backgroundColor: theme.text, borderColor: theme.text }}>
       <Row>
@@ -132,7 +152,7 @@ function ContinueCard({ doc }: { doc: NonNullable<Awaited<ReturnType<typeof rece
             {doc.title}
           </T>
           <T variant="small" color={theme.background} style={{ opacity: 0.7 }} numberOfLines={1}>
-            {doc.subjects?.name}
+            {doc.subjects ? nameOf(doc.subjects) : ''}
           </T>
         </View>
         <Icon name="chevron" size={16} color={theme.background} />

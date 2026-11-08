@@ -10,6 +10,7 @@ import { Button, Row, T, tap } from '@/components/ui';
 import { Fonts, Radius, SubjectColors, type SubjectColor, Space } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { createSubject, getSubject, updateSubject } from '@/lib/api';
+import { useSubjectName } from '@/lib/subject-name';
 import type { Subject } from '@/lib/types';
 
 export default function SubjectForm() {
@@ -25,7 +26,9 @@ function Form({ id, initial }: { id?: string; initial?: Subject }) {
   const theme = useTheme();
   const queryClient = useQueryClient();
 
-  const [name, setName] = useState(initial?.name ?? '');
+  const nameOf = useSubjectName();
+  const shownName = initial ? nameOf(initial) : '';
+  const [name, setName] = useState(shownName);
   const [color, setColor] = useState<SubjectColor>((initial?.color as SubjectColor) ?? 'teal');
   const [chosenIcon, setChosenIcon] = useState<string | null>(initial?.icon ?? null);
   const [saving, setSaving] = useState(false);
@@ -38,7 +41,8 @@ function Form({ id, initial }: { id?: string; initial?: Subject }) {
     setError(false);
     try {
       if (id) {
-        await updateSubject(id, { name: name.trim(), color, icon });
+        // Solo se renombra si cambió el nombre que se ve; así no se pierde la traducción
+        await updateSubject(id, name.trim() === shownName ? { color, icon } : { name: name.trim(), color, icon });
         queryClient.invalidateQueries({ queryKey: ['subject', id] });
         router.back();
       } else {

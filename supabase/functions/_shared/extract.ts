@@ -102,13 +102,25 @@ export function extractPptx(bytes: Uint8Array): Extracted {
   return { text: parts.join("\n\n"), pages: slides.length };
 }
 
-/** Conteo aproximado de páginas de un PDF sin abrirlo por completo. */
+/**
+ * Conteo aproximado de páginas de un PDF. Lee por partes de 1 MB para no gastar memoria
+ * (convertir un PDF grande a texto de una vez puede tumbar el servidor).
+ */
 export function countPdfPages(bytes: Uint8Array): number {
-  const head = new TextDecoder("latin1").decode(bytes);
-  // /Type /Pages con /Count N (toma el mayor, que es el árbol raíz)
-  let max = 0;
-  for (const m of head.matchAll(/\/Type\s*\/Pages\b[^>]*?\/Count\s+(\d+)/g)) max = Math.max(max, Number(m[1]));
-  for (const m of head.matchAll(/\/Count\s+(\d+)[^>]*?\/Type\s*\/Pages\b/g)) max = Math.max(max, Number(m[1]));
-  if (max > 0) return max;
-  return (head.match(/\/Type\s*\/Page(?!s)\b/g) ?? []).length;
+  const decoder = new TextDecoder("latin1");
+  const CHUNK = 1024 * 1024;
+  const OVERLAP = 256;
+  let maxCount = 0;
+  let pageObjects = 0;
+  for (let start = 0; start < bytes.length; start += CHUNK) {
+    const from = Math.max(0, start - OVERLAP);
+    const text = decoder.decode(bytes.subarray(from, Math.min(bytes.length, start + CHUNK)));
+    // /Type /Pages con /Count N (el mayor es el árbol raíz)
+    for (const m of text.matchAll(/\/Type\s*\/Pages\b[^>]*?\/Count\s+(\d+)/g)) maxCount = Math.max(maxCount, Number(m[1]));
+    for (const m of text.matchAll(/\/Count\s+(\d+)[^>]*?\/Type\s*\/Pages\b/g)) maxCount = Math.max(maxCount, Number(m[1]));
+    // Respaldo: contar objetos /Type /Page (sin contar los que caen en la zona repetida)
+    const fresh = from === start ? text : text.slice(start - from);
+    pageObjects += (fresh.match(/\/Type\s*\/Page(?!s)\b/g) ?? []).length;
+  }
+  return maxCount > 0 ? maxCount : pageObjects;
 }

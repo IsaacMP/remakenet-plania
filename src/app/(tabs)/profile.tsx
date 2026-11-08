@@ -6,11 +6,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, View } from 'react-native';
 
-import { Badge, Button, Card, Chip, IconBubble, Row, Screen, SectionTitle, T } from '@/components/ui';
+import { Badge, Button, Card, Chip, IconBubble, ListRow, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { Fonts, Space } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { deleteAccount, updateProfile, usageThisMonth } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { setThemePreference, useThemePreference } from '@/lib/appearance';
 import { setSoundsEnabled, useSoundsEnabled } from '@/lib/feedback';
 import { type AppLocale, currentLocale, setAppLocale } from '@/lib/i18n';
 import { PLAN_LIMITS } from '@/lib/plans';
@@ -25,6 +26,7 @@ export default function ProfileScreen() {
   const [locale, setLocale] = useState<AppLocale>(currentLocale());
   const [deleting, setDeleting] = useState(false);
   const sounds = useSoundsEnabled();
+  const themePref = useThemePreference();
 
   const plan = profile?.plan ?? 'free';
   const limit = PLAN_LIMITS[plan].generationsPerMonth;
@@ -111,6 +113,13 @@ export default function ProfileScreen() {
         <Chip label="English" selected={locale === 'en'} onPress={() => changeLocale('en')} />
       </Row>
 
+      <SectionTitle>{t('profile.theme')}</SectionTitle>
+      <Row gap={Space.sm} style={{ flexWrap: 'wrap' }}>
+        <Chip label={t('profile.themeSystem')} selected={themePref === 'system'} onPress={() => setThemePreference('system')} />
+        <Chip label={t('profile.themeLight')} icon="sun" selected={themePref === 'light'} onPress={() => setThemePreference('light')} />
+        <Chip label={t('profile.themeDark')} icon="moon" selected={themePref === 'dark'} onPress={() => setThemePreference('dark')} />
+      </Row>
+
       <SectionTitle>{t('profile.sounds')}</SectionTitle>
       <Row gap={Space.sm}>
         <Chip label={t('profile.soundsOn')} icon="mic" selected={sounds} onPress={() => setSoundsEnabled(true)} />
@@ -123,6 +132,12 @@ export default function ProfileScreen() {
           <Chip key={l} label={t(`onboarding.levels.${l}`)} selected={profile?.level === l} onPress={() => changeLevel(l)} />
         ))}
       </Row>
+
+      <SectionTitle>{t('profile.legal')}</SectionTitle>
+      <View style={{ gap: Space.sm }}>
+        <ListRow icon="doc" title={t('profile.privacy')} onPress={() => router.push('/legal/privacy')} />
+        <ListRow icon="doc" title={t('profile.terms')} onPress={() => router.push('/legal/terms')} />
+      </View>
 
       <View style={{ gap: Space.sm, marginTop: Space.lg }}>
         <Button label={t('profile.signOut')} variant="secondary" onPress={signOut} />

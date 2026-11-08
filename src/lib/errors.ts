@@ -5,7 +5,7 @@ import { PLAN_LIMITS } from '@/lib/plans';
 
 const KNOWN = new Set([
   'limit_reached', 'file_too_large', 'too_many_pages', 'too_long', 'unsupported', 'empty', 'unreadable',
-  'refusal', 'busy', 'file_missing', 'ai_error', 'network', 'already_processing', 'ai_not_configured',
+  'refusal', 'busy', 'file_missing', 'ai_error', 'network', 'already_processing', 'ai_not_configured', 'timeout',
 ]);
 
 /** Convierte un código de error del servidor en una frase que el alumno entiende. */

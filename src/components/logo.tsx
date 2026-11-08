@@ -42,3 +42,19 @@ export function Wordmark({ size = 40, color }: { size?: number; color: string })
     </View>
   );
 }
+
+/** Logo de la pantalla principal: dorado y con la etiqueta PRO para quien tiene Plania Pro. */
+export function HomeLogo({ pro, size = 34 }: { pro: boolean; size?: number }) {
+  if (!pro) return <LogoMark size={size} />;
+  return (
+    <View
+      accessible
+      accessibilityLabel="Plania Pro"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <LogoMark size={size} bg={Palette.sun} fg={Palette.ink} dot={Palette.coral} />
+      <View style={{ backgroundColor: Palette.sun, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+        <Text style={{ fontFamily: Fonts.display, fontSize: 11, letterSpacing: 1, color: Palette.ink }}>PRO</Text>
+      </View>
+    </View>
+  );
+}

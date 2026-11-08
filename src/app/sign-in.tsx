@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
@@ -74,7 +75,15 @@ export default function SignIn() {
         ) : null}
         <Button label={t('auth.google')} onPress={onGoogle} loading={loading} icon="person" />
         <T variant="small" color={theme.textSecondary} style={{ textAlign: 'center' }}>
-          {t('auth.legal')}
+          {t('auth.legalPrefix')}
+          <T variant="small" color={theme.tint} onPress={() => router.push('/legal/terms')} suppressHighlighting>
+            {t('auth.legalTerms')}
+          </T>
+          {t('auth.legalAnd')}
+          <T variant="small" color={theme.tint} onPress={() => router.push('/legal/privacy')} suppressHighlighting>
+            {t('auth.legalPrivacy')}
+          </T>
+          {t('auth.legalSuffix')}
         </T>
       </View>
     </SafeAreaView>

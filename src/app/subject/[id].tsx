@@ -11,10 +11,11 @@ import { ItemCard } from '@/components/organizer';
 import { Badge, Button, Card, EmptyState, IconBubble, ListRow, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { Fonts, Space } from '@/constants/theme';
 import { useSubjectColor, useTheme } from '@/hooks/use-theme';
-import { ACCEPTED_MIME, deleteSubject, getSubject, listDocuments, listSharedSets, listSubjectItems, mimeFromName, uploadDocument } from '@/lib/api';
+import { ACCEPTED_MIME, deleteSubject, getSubject, isStuck, listDocuments, listSharedSets, listSubjectItems, mimeFromName, uploadDocument } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { errorMessage } from '@/lib/errors';
 import { PLAN_LIMITS } from '@/lib/plans';
+import { useSubjectName } from '@/lib/subject-name';
 import type { StudyDocument } from '@/lib/types';
 
 export default function SubjectScreen() {
@@ -31,7 +32,7 @@ export default function SubjectScreen() {
     queryKey: ['documents', id],
     queryFn: () => listDocuments(id),
     // Mientras haya algo preparándose, revisar cada 3 segundos
-    refetchInterval: (q) => (q.state.data?.some((d) => d.status === 'processing' || d.status === 'uploaded') ? 3000 : false),
+    refetchInterval: (q) => (q.state.data?.some((d) => (d.status === 'processing' || d.status === 'uploaded') && !isStuck(d)) ? 3000 : false),
   });
   const shared = useQuery({
     queryKey: ['shared-sets', id],
@@ -44,6 +45,7 @@ export default function SubjectScreen() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const c = useSubjectColor(subject.data?.color ?? 'teal');
+  const nameOf = useSubjectName();
 
   async function pickAndUpload() {
     setUploadError(null);
@@ -75,7 +77,7 @@ export default function SubjectScreen() {
 
   function confirmDelete() {
     if (!subject.data) return;
-    Alert.alert(t('subject.deleteConfirm', { name: subject.data.name }), undefined, [
+    Alert.alert(t('subject.deleteConfirm', { name: nameOf(subject.data) }), undefined, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.delete'),
@@ -117,7 +119,7 @@ export default function SubjectScreen() {
           <Row>
             <IconBubble name={subject.data.icon} color={c.strong} bg={c.soft} size={52} />
             <T style={[styles.title, { color: theme.text }]} numberOfLines={2}>
-              {subject.data.name}
+              {nameOf(subject.data)}
             </T>
           </Row>
         ) : (
@@ -196,7 +198,8 @@ function DocumentRow({ doc }: { doc: StudyDocument }) {
   const { t } = useTranslation();
   const theme = useTheme();
   const ext = doc.mime_type.includes('presentation') ? 'PPT' : doc.mime_type.includes('word') ? 'DOC' : 'PDF';
-  const working = doc.status === 'processing' || doc.status === 'uploaded';
+  const stuck = isStuck(doc);
+  const working = !stuck && (doc.status === 'processing' || doc.status === 'uploaded');
   return (
     <ListRow
       icon="doc"
@@ -205,14 +208,14 @@ function DocumentRow({ doc }: { doc: StudyDocument }) {
       subtitle={
         working
           ? t('document.status.processing')
-          : doc.status === 'failed'
+          : doc.status === 'failed' || stuck
             ? t('document.status.failed')
             : t('document.status.ready')
       }
       onPress={() => router.push(`/document/${doc.id}`)}
       right={
         <Row gap={Space.sm}>
-          {working ? <ActivityIndicator color={theme.tint} /> : doc.status === 'failed' ? <Icon name="warning" size={18} color={theme.danger} /> : <Badge label={ext} tone="coral" />}
+          {working ? <ActivityIndicator color={theme.tint} /> : doc.status === 'failed' || stuck ? <Icon name="warning" size={18} color={theme.danger} /> : <Badge label={ext} tone="coral" />}
           <Icon name="chevron" size={16} color={theme.textSecondary} />
         </Row>
       }
