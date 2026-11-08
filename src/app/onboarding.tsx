@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { iconForSubject, type IconName } from '@/components/icon';
+import { LanguageToggle } from '@/components/language-toggle';
 import { LogoMark } from '@/components/logo';
 import { Button, Card, Chip, IconBubble, Row, T } from '@/components/ui';
 import { Fonts, Radius, Space } from '@/constants/theme';
@@ -67,9 +68,16 @@ export default function Onboarding() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Row>
           <LogoMark size={36} />
-          <T variant="heading" color={theme.textSecondary}>
+          <T variant="heading" color={theme.textSecondary} style={{ flex: 1 }} numberOfLines={1}>
             {t('onboarding.hello', { name: firstName(profile, session) })}
           </T>
+          <LanguageToggle
+            onChange={() => {
+              // Las materias sugeridas cambian de idioma; empezar la selección de nuevo
+              setSelected([]);
+              setExtra([]);
+            }}
+          />
         </Row>
 
         <View style={{ gap: Space.sm }}>

@@ -157,6 +157,8 @@ const en: Translations = {
     retryAll: 'Take the exam again',
     exit: 'Leave exam',
     review: 'Your mistakes',
+    streak: '{{count}} in a row!',
+    bestStreak: 'Best streak: {{count}} in a row',
   },
   match: {
     instructions: 'Tap a concept, then its definition.',
@@ -164,6 +166,7 @@ const en: Translations = {
     doneBody: 'You did it in {{seconds}} s with {{mistakes}} mistakes.',
     again: 'Play again',
     notEnough: 'This activity needs at least 4 flashcards.',
+    combo: 'Combo x{{count}}!',
   },
   share: {
     title: 'Share',
@@ -246,6 +249,9 @@ const en: Translations = {
     usage: 'This month',
     usageValue: '{{used}} of {{limit}} generations',
     language: 'Language',
+    sounds: 'Sounds',
+    soundsOn: 'Sound on',
+    soundsOff: 'Sound off',
     level: 'Level',
     coupon: 'Your coupon',
     signOut: 'Sign out',

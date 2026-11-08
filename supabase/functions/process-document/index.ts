@@ -117,7 +117,7 @@ async function run(
   if (doc.mime_type === MIME.pdf) {
     const pages = countPdfPages(bytes);
     if (pages > limits.maxPages) throw new StudyError("too_many_pages");
-    studyDoc = { kind: "pdf", title: doc.title, base64: toBase64(bytes) };
+    studyDoc = { kind: "pdf", title: doc.title, bytes };
   } else {
     let extracted;
     try {
@@ -184,13 +184,4 @@ async function run(
   await admin.from("ai_usage").insert({ user_id: userId, kind: mode === "all" ? "pack" : "quiz", document_id: doc.id });
   await admin.from("documents").update({ status: "ready", error_code: null }).eq("id", doc.id);
   console.log("process-document ok", doc.id, mode, currentProvider(), `${Date.now() - started}ms`);
-}
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
 }

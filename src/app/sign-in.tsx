@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon, type IconName } from '@/components/icon';
+import { LanguageToggle } from '@/components/language-toggle';
 import { LogoMark } from '@/components/logo';
 import { Button, IconBubble, T } from '@/components/ui';
 import { Fonts, Radius, Space } from '@/constants/theme';
@@ -40,6 +41,9 @@ export default function SignIn() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
+      <View style={{ alignItems: 'flex-end' }}>
+        <LanguageToggle />
+      </View>
       <View style={styles.top}>
         <LogoMark size={88} />
         <T style={[styles.name, { color: theme.text }]}>plania</T>
@@ -79,7 +83,7 @@ export default function SignIn() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, padding: Space.xl, justifyContent: 'space-between' },
-  top: { alignItems: 'center', gap: Space.md, marginTop: Space.xxl },
+  top: { alignItems: 'center', gap: Space.md },
   name: { fontFamily: Fonts.display, fontSize: 52, lineHeight: 56, letterSpacing: -2 },
   preview: { borderRadius: Radius.xl, borderWidth: 1, padding: Space.lg, gap: Space.lg },
   bullet: { flexDirection: 'row', alignItems: 'center', gap: Space.md },

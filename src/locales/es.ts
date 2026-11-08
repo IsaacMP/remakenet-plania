@@ -155,6 +155,8 @@ const es = {
     retryAll: 'Hacer el examen otra vez',
     exit: 'Salir del examen',
     review: 'Tus errores',
+    streak: '¡{{count}} seguidas!',
+    bestStreak: 'Mejor racha: {{count}} seguidas',
   },
   match: {
     instructions: 'Toca un concepto y luego su definición.',
@@ -162,6 +164,7 @@ const es = {
     doneBody: 'Lo hiciste en {{seconds}} s con {{mistakes}} errores.',
     again: 'Jugar otra vez',
     notEnough: 'Se necesitan al menos 4 tarjetas para esta actividad.',
+    combo: '¡Combo x{{count}}!',
   },
   share: {
     title: 'Compartir',
@@ -244,6 +247,9 @@ const es = {
     usage: 'Este mes',
     usageValue: '{{used}} de {{limit}} generaciones',
     language: 'Idioma',
+    sounds: 'Sonidos',
+    soundsOn: 'Con sonido',
+    soundsOff: 'Sin sonido',
     level: 'Nivel',
     coupon: 'Tu cupón',
     signOut: 'Cerrar sesión',

@@ -1,8 +1,9 @@
 // Límites y funciones por plan. Mantener sincronizado con supabase/functions/_shared/plans.ts.
 
 export const PLAN_LIMITS = {
-  free: { generationsPerMonth: 10, maxFileMb: 10, maxPages: 30 },
-  pro: { generationsPerMonth: 100, maxFileMb: 25, maxPages: 300 },
+  // Lo que cuesta son las páginas, no el peso del archivo. 50 MB es el máximo actual (Supabase gratis y Gemini).
+  free: { generationsPerMonth: 10, maxFileMb: 50, maxPages: 60 },
+  pro: { generationsPerMonth: 100, maxFileMb: 50, maxPages: 500 },
 } as const;
 
 export type Plan = keyof typeof PLAN_LIMITS;

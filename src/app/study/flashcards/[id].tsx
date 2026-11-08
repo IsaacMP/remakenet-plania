@@ -5,10 +5,12 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Animated, Pressable, StyleSheet, View } from 'react-native';
 
-import { Button, Card, IconBubble, ProgressBar, Row, Screen, T, tap } from '@/components/ui';
+import { Button, Card, IconBubble, ProgressBar, Row, Screen, T } from '@/components/ui';
 import { Fonts, Radius, Space } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getStudySet, recordStudy, saveCardProgress } from '@/lib/api';
+import { play, preloadSounds } from '@/lib/feedback';
+import { Confetti } from '@/components/celebrate';
 import { useAuth } from '@/lib/auth';
 import { dueCards, review } from '@/lib/srs';
 import type { CardProgress, StudySet } from '@/lib/types';
@@ -51,7 +53,12 @@ function Session({ set }: { set: CardsSet }) {
   const finished = pos >= queue.length;
 
   useEffect(() => {
+    preloadSounds();
+  }, []);
+
+  useEffect(() => {
     if (finished && queue.length > 0) {
+      play('win');
       saveCardProgress(set.id, progress).catch(() => {});
       recordStudy().then(() => refreshProfile()).catch(() => {});
       queryClient.invalidateQueries({ queryKey: ['sets'] });
@@ -61,7 +68,7 @@ function Session({ set }: { set: CardsSet }) {
   }, [finished]);
 
   function answer(knew: boolean) {
-    tap();
+    play(knew ? 'correct' : 'pop');
     const index = queue[pos];
     setProgress((p) => review(p, index, knew));
     if (knew) setKnown((k) => k + 1);
@@ -107,6 +114,7 @@ function Session({ set }: { set: CardsSet }) {
             <Button label={t('common.done')} variant="secondary" onPress={() => router.back()} />
           </View>
         </Card>
+        <Confetti fire={known > 0 ? 1 : 0} count={40} spread={240} />
       </Screen>
     );
   }
@@ -129,7 +137,7 @@ function Session({ set }: { set: CardsSet }) {
         accessibilityLabel={flipped ? card.back : card.front}
         accessibilityHint={flipped ? undefined : t('flashcards.tapToFlip')}
         onPress={() => {
-          tap();
+          play('pop');
           setFlipped((f) => !f);
         }}
         style={{ flex: 1 }}>

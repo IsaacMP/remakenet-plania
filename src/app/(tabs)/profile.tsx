@@ -11,6 +11,7 @@ import { Fonts, Space } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { deleteAccount, updateProfile, usageThisMonth } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { setSoundsEnabled, useSoundsEnabled } from '@/lib/feedback';
 import { type AppLocale, currentLocale, setAppLocale } from '@/lib/i18n';
 import { PLAN_LIMITS } from '@/lib/plans';
 import type { Profile } from '@/lib/types';
@@ -23,6 +24,7 @@ export default function ProfileScreen() {
   const usage = useQuery({ queryKey: ['usage'], queryFn: usageThisMonth });
   const [locale, setLocale] = useState<AppLocale>(currentLocale());
   const [deleting, setDeleting] = useState(false);
+  const sounds = useSoundsEnabled();
 
   const plan = profile?.plan ?? 'free';
   const limit = PLAN_LIMITS[plan].generationsPerMonth;
@@ -107,6 +109,12 @@ export default function ProfileScreen() {
       <Row gap={Space.sm}>
         <Chip label="Español" selected={locale === 'es'} onPress={() => changeLocale('es')} />
         <Chip label="English" selected={locale === 'en'} onPress={() => changeLocale('en')} />
+      </Row>
+
+      <SectionTitle>{t('profile.sounds')}</SectionTitle>
+      <Row gap={Space.sm}>
+        <Chip label={t('profile.soundsOn')} icon="mic" selected={sounds} onPress={() => setSoundsEnabled(true)} />
+        <Chip label={t('profile.soundsOff')} selected={!sounds} onPress={() => setSoundsEnabled(false)} />
       </Row>
 
       <SectionTitle>{t('profile.level')}</SectionTitle>
