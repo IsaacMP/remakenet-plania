@@ -96,7 +96,9 @@ function Navigator() {
           <Stack.Screen name="study/flashcards/[id]" options={{ title: t('document.tools.flashcards') }} />
           <Stack.Screen name="study/quiz/[id]" options={{ title: t('document.tools.quiz'), gestureEnabled: false }} />
           <Stack.Screen name="study/match/[id]" options={{ title: t('document.tools.match') }} />
+          <Stack.Screen name="item/[id]" options={{ title: '' }} />
           <Stack.Screen name="subject/form" options={sheet} />
+          <Stack.Screen name="create" options={{ ...sheet, sheetAllowedDetents: [0.6, 0.9] }} />
           <Stack.Screen name="share/[id]" options={sheet} />
           <Stack.Screen name="code" options={sheet} />
           <Stack.Screen name="waitlist/[feature]" options={{ ...sheet, sheetAllowedDetents: [0.8, 1] }} />

@@ -7,10 +7,11 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, StyleSheet } from 'react-native';
 
 import { Icon } from '@/components/icon';
+import { ItemCard } from '@/components/organizer';
 import { Badge, Button, Card, EmptyState, IconBubble, ListRow, Row, Screen, SectionTitle, T } from '@/components/ui';
 import { Fonts, Space } from '@/constants/theme';
 import { useSubjectColor, useTheme } from '@/hooks/use-theme';
-import { ACCEPTED_MIME, deleteSubject, getSubject, listDocuments, listSharedSets, mimeFromName, uploadDocument } from '@/lib/api';
+import { ACCEPTED_MIME, deleteSubject, getSubject, listDocuments, listSharedSets, listSubjectItems, mimeFromName, uploadDocument } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { errorMessage } from '@/lib/errors';
 import { PLAN_LIMITS } from '@/lib/plans';
@@ -37,6 +38,8 @@ export default function SubjectScreen() {
     queryFn: () => listSharedSets(id),
     enabled: Boolean(subject.data?.is_shared_inbox),
   });
+
+  const subjectItems = useQuery({ queryKey: ['subject-items', id], queryFn: () => listSubjectItems(id) });
 
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -165,6 +168,22 @@ export default function SubjectScreen() {
             {list.length ? <SectionTitle>{t('subject.documents')}</SectionTitle> : null}
             {list.map((doc) => (
               <DocumentRow key={doc.id} doc={doc} />
+            ))}
+
+            <SectionTitle
+              right={
+                <Button
+                  label={t('organize.add')}
+                  variant="ghost"
+                  icon="plus"
+                  onPress={() => router.push(`/create?subject=${id}`)}
+                  style={{ minHeight: 36, paddingHorizontal: Space.sm }}
+                />
+              }>
+              {t('organize.inSubject')}
+            </SectionTitle>
+            {(subjectItems.data ?? []).map((item) => (
+              <ItemCard key={item.id} item={item} showSubject={false} />
             ))}
           </>
         )}

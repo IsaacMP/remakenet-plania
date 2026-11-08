@@ -91,3 +91,35 @@ export type SharePreview = {
   owner_name: string;
   uses: number;
 };
+
+// ── Organizador ─────────────────────────────────
+
+export type ItemKind = 'note' | 'idea' | 'project' | 'event';
+
+export type ProjectTask = { id: string; text: string; done: boolean };
+
+export type Item = {
+  id: string;
+  kind: ItemKind;
+  title: string;
+  body: string;
+  subject_id: string | null;
+  pinned: boolean;
+  color: string | null;
+  due_date: string | null;
+  tasks: ProjectTask[];
+  done: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  all_day: boolean;
+  location_name: string | null;
+  location_address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  remind_minutes: number | null;
+  converted_to: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ItemWithSubject = Item & { subjects: { name: string; color: string; icon: string } | null };

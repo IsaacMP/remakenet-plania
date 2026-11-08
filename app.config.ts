@@ -51,6 +51,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-localization',
     'expo-secure-store',
     ['@react-native-google-signin/google-signin', { iosUrlScheme }],
+    [
+      'expo-location',
+      {
+        locationWhenInUsePermission: 'Plania usa tu ubicación solo para encontrar el lugar de tus eventos.',
+      },
+    ],
+    ['expo-notifications', { color: '#0E8F7E' }],
     'expo-font',
   ],
   experiments: {

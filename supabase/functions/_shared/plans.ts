@@ -2,10 +2,10 @@
 export const PLAN_LIMITS = {
   // El tamaño del archivo no es lo que cuesta (un PDF pesado suele serlo por sus imágenes);
   // lo que cuesta son las páginas. Por eso el plan se distingue por páginas.
-  // 50 MB es el máximo actual: lo pone el plan gratis de Supabase y el límite de PDF de Gemini.
+  // 50 MB es el máximo actual (plan gratis de Supabase y límite de PDF de Gemini); el plan gratis usa 35.
   free: {
     generationsPerMonth: 10,
-    maxFileBytes: 50 * 1024 * 1024,
+    maxFileBytes: 35 * 1024 * 1024,
     maxPages: 60,
     maxChars: 300_000,
   },

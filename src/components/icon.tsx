@@ -49,6 +49,12 @@ const ICONS = {
   warning: { ios: 'exclamationmark.triangle.fill', android: 'warning', web: 'warning' },
   home: { ios: 'house.fill', android: 'home', web: 'home' },
   pencil: { ios: 'pencil', android: 'edit', web: 'edit' },
+  pin: { ios: 'pin.fill', android: 'push_pin', web: 'push_pin' },
+  place: { ios: 'mappin.and.ellipse', android: 'location_on', web: 'location_on' },
+  lock: { ios: 'lock.fill', android: 'lock', web: 'lock' },
+  clock: { ios: 'clock', android: 'schedule', web: 'schedule' },
+  bell: { ios: 'bell.fill', android: 'notifications', web: 'notifications' },
+  arrow: { ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' },
 } as const satisfies Record<string, SymbolName>;
 
 export type IconName = keyof typeof ICONS;

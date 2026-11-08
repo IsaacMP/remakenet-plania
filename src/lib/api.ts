@@ -6,6 +6,9 @@ import { currentLocale } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import type {
   CardProgress,
+  Item,
+  ItemKind,
+  ItemWithSubject,
   Profile,
   QuizAttempt,
   SharePreview,
@@ -314,4 +317,78 @@ export async function myWaitlist(): Promise<string[]> {
   const { data, error } = await supabase.from('waitlist').select('feature');
   fail(error);
   return (data ?? []).map((r) => r.feature as string);
+}
+
+// ── Organizador: notas, ideas, proyectos, eventos ──
+
+const ITEM_SELECT = '*, subjects(name, color, icon)';
+
+export async function listItems(kind?: ItemKind): Promise<ItemWithSubject[]> {
+  let q = supabase.from('items').select(ITEM_SELECT);
+  if (kind) q = q.eq('kind', kind);
+  const { data, error } = await q.order('pinned', { ascending: false }).order('updated_at', { ascending: false }).limit(200);
+  fail(error);
+  return data as ItemWithSubject[];
+}
+
+/** Eventos desde hoy en adelante, en orden de fecha. */
+export async function upcomingEvents(limit = 20): Promise<ItemWithSubject[]> {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const { data, error } = await supabase
+    .from('items')
+    .select(ITEM_SELECT)
+    .eq('kind', 'event')
+    .gte('starts_at', start.toISOString())
+    .order('starts_at')
+    .limit(limit);
+  fail(error);
+  return data as ItemWithSubject[];
+}
+
+export async function listSubjectItems(subjectId: string): Promise<ItemWithSubject[]> {
+  const { data, error } = await supabase
+    .from('items')
+    .select(ITEM_SELECT)
+    .eq('subject_id', subjectId)
+    .order('pinned', { ascending: false })
+    .order('updated_at', { ascending: false });
+  fail(error);
+  return data as ItemWithSubject[];
+}
+
+export async function getItem(id: string): Promise<Item> {
+  const { data, error } = await supabase.from('items').select('*').eq('id', id).single();
+  fail(error);
+  return data as Item;
+}
+
+export type ItemInput = Partial<Omit<Item, 'id' | 'created_at' | 'updated_at'>> & { kind: ItemKind };
+
+export async function saveItem(id: string | null, input: ItemInput): Promise<Item> {
+  const row = { ...input, title: (input.title ?? '').trim().slice(0, 200) };
+  const query = id
+    ? supabase.from('items').update(row).eq('id', id).select().single()
+    : supabase.from('items').insert({ ...row, user_id: await uid() }).select().single();
+  const { data, error } = await query;
+  fail(error);
+  return data as Item;
+}
+
+export async function deleteItem(id: string) {
+  const { error } = await supabase.from('items').delete().eq('id', id);
+  fail(error);
+}
+
+/** Convierte una idea en proyecto: crea el proyecto con su texto y marca la idea. */
+export async function convertIdeaToProject(idea: Item): Promise<Item> {
+  const project = await saveItem(null, {
+    kind: 'project',
+    title: idea.title,
+    body: idea.body,
+    subject_id: idea.subject_id,
+    tasks: [],
+  });
+  await saveItem(idea.id, { kind: 'idea', converted_to: project.id });
+  return project;
 }
